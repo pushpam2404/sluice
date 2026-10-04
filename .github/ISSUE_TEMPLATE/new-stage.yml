@@ -1,0 +1,50 @@
+name: Propose a new step or check
+description: A new file in sluice/steps/ or sluice/checks/
+labels: ["enhancement", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Adding a step or a check means adding one file, so these are the easiest
+        contributions to make without conflicting with anyone.
+
+        Read [writing-a-step.md](../blob/main/docs/writing-a-step.md) or
+        [writing-a-check.md](../blob/main/docs/writing-a-check.md) first.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Which kind?
+      options:
+        - A step — it transforms rows
+        - A check — it inspects rows and never changes them
+    validations: { required: true }
+  - type: input
+    id: name
+    attributes:
+      label: Proposed NAME
+      placeholder: cast_types
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it do?
+      description: One or two sentences, as it would read in `sluice stages`.
+    validations: { required: true }
+  - type: textarea
+    id: example
+    attributes:
+      label: How would it look in a pipeline file?
+      render: toml
+      placeholder: |
+        [[stage]]
+        use     = "cast_types"
+        columns = { amount = "float", signed_up = "date" }
+    validations: { required: true }
+  - type: textarea
+    id: errors
+    attributes:
+      label: What can go wrong, and what should the error say?
+      description: |
+        This is the part worth thinking about. Every error in this project names
+        the row or column and suggests a fix.
+    validations: { required: true }

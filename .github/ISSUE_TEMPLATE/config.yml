@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: How to contribute
+    url: ../../blob/main/CONTRIBUTING.md
+    about: Read this first. Covers claiming, the two kinds of issue, and what gets declined.
+  - name: Why things are the way they are
+    url: ../../blob/main/docs/design-decisions.md
+    about: Every decision that could have gone the other way. Read before proposing a change to one.

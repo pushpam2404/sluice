@@ -1,0 +1,20 @@
+# The checks that block a merge are real bugs only. Style is reported and
+# ignored — see .github/workflows/lint.yml. Nobody's contribution should be
+# rejected by a robot over whitespace.
+line-length = 100
+target-version = "py311"
+extend-exclude = ["*.md"]
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+    "E501",   # line length is the formatter's job
+    "SIM108", # a ternary is not always clearer than an if
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["F401", "F811", "B011", "B017"]
+"__init__.py" = ["F401"]
+
+[format]
+quote-style = "double"

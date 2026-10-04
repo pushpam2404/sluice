@@ -1,0 +1,39 @@
+# Read a CSV, tidy it, check it, and load it into SQLite.
+#
+# Run it:   python -m sluice run pipelines/customers.toml -v
+#
+# Stages run top to bottom. A check sitting between two steps sees exactly what
+# the step above it produced, which is how you catch a problem at the point it
+# appears rather than three stages later.
+
+name = "customers"
+
+[[stage]]
+use  = "read_csv"
+path = "pipelines/data/customers.csv"
+
+[[stage]]
+use = "row_count"
+min = 1                      # refuse to carry on with an empty extract
+
+[[stage]]
+use     = "rename_columns"
+mapping = { cust_id = "customer_id", full_name = "name" }
+
+[[stage]]
+use     = "not_null"
+columns = ["customer_id", "email"]
+
+[[stage]]
+use    = "unique"
+column = "customer_id"
+
+[[stage]]
+use    = "filter_rows"
+column = "status"
+equals = "active"
+
+[[stage]]
+use      = "write_sqlite"
+database = "warehouse.db"
+table    = "customers"

@@ -1,0 +1,45 @@
+# Only real bugs block a merge. Style is reported and then ignored.
+#
+# A contribution rejected over whitespace teaches people that CI is an obstacle
+# to work around rather than a safety net, and this project needs them to trust
+# it — the whole point is checks you believe.
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruff:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install --quiet ruff
+
+      # F = pyflakes: undefined names, unused imports, duplicate definitions
+      # B = bugbear:  mutable default arguments, except-without-raise
+      # Code that is genuinely wrong, not code that is untidy.
+      - name: Real bugs (this one blocks the merge)
+        run: ruff check . --select F,B --output-format=github
+
+      - name: Style suggestions (advice only, never blocks)
+        continue-on-error: true
+        run: |
+          echo "Suggestions. Your pull request can be merged either way."
+          ruff check . --select E,I,UP,SIM --output-format=concise || true
+          ruff format --diff . || true
+          echo ""
+          echo "Apply them all:  pip install ruff && ruff format . && ruff check . --fix"

@@ -1,0 +1,100 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the floor because tomllib arrived there. See
+        # docs/design-decisions.md section 8.
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip pytest
+      - run: python -m pytest -v
+
+  example-pipeline:
+    name: the example pipeline actually runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # A tool whose own example is broken is worse than no example. This runs
+      # every pipeline in pipelines/ and checks the result landed in SQLite.
+      - name: Run every shipped pipeline
+        run: |
+          failed=0
+          for f in pipelines/*.toml; do
+            echo "::group::$f"
+            if python -m sluice run "$f" -v; then
+              echo "PASS $f"
+            else
+              echo "::error file=$f::This shipped pipeline does not run."
+              failed=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $failed
+
+      - name: Check the data really arrived
+        run: |
+          python - <<'PY'
+          import sqlite3, sys
+          rows = sqlite3.connect("warehouse.db").execute(
+              "SELECT COUNT(*) FROM customers").fetchone()[0]
+          print(f"customers table holds {rows} rows")
+          if rows == 0:
+              print("::error::The pipeline reported success but wrote nothing.")
+              sys.exit(1)
+          PY
+
+  stages-are-well-formed:
+    name: every step and check declares itself properly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # The most common mistake in an "add a step" pull request is a missing
+      # NAME or DESCRIPTION. Discovery then silently skips the file and the
+      # contributor cannot work out why nothing happened.
+      - name: Check the registry
+        run: |
+          python - <<'PY'
+          import sys
+          from sluice.registry import describe_all
+
+          problems = []
+          for stage in describe_all():
+              if not stage.description:
+                  problems.append(f"{stage.name}: no DESCRIPTION")
+              elif not stage.description.endswith("."):
+                  problems.append(f"{stage.name}: DESCRIPTION should end in a full stop")
+              if stage.name != stage.name.lower():
+                  problems.append(f"{stage.name}: NAME should be lower case")
+
+          for p in problems:
+              print(f"::error::{p}")
+          if problems:
+              sys.exit(1)
+          print(f"All {len(describe_all())} stages look right.")
+          PY

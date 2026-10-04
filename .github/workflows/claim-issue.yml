@@ -1,0 +1,103 @@
+# Implements the Issue Pre-Assignment Rule without a human in the loop.
+# A contributor comments `/claim` on an issue and it is assigned to them.
+name: Claim an issue
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+# Serialise claims from the same person. Without this, two /claim comments a few
+# seconds apart both read the "how many do you already have" count before either
+# assignment lands, and the 2-issue cap is bypassed.
+concurrency:
+  group: claim-${{ github.event.comment.user.login }}
+  cancel-in-progress: false
+
+jobs:
+  claim:
+    # Ignore comments on pull requests, and anything that is not a claim.
+    if: >
+      !github.event.issue.pull_request &&
+      (contains(github.event.comment.body, '/claim') ||
+       contains(github.event.comment.body, '/unclaim'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign or release the issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const user = context.payload.comment.user.login;
+            const body = context.payload.comment.body;
+            const issue = context.payload.issue;
+
+            const say = (text) =>
+              github.rest.issues.createComment({ owner, repo, issue_number, body: text });
+
+            if (body.includes('/unclaim')) {
+              await github.rest.issues.removeAssignees({
+                owner, repo, issue_number, assignees: [user],
+              });
+              try {
+                await github.rest.issues.removeLabel({
+                  owner, repo, issue_number, name: 'status: claimed',
+                });
+              } catch (e) { /* label may not be there */ }
+              await say(`@${user} has released this issue. It is open for anyone again.`);
+              return;
+            }
+
+            // --- /claim ---
+            const assignees = issue.assignees.map((a) => a.login);
+
+            if (assignees.length > 0 && !assignees.includes(user)) {
+              await say(
+                `Sorry @${user}, this issue is already assigned to @${assignees[0]}.\n\n` +
+                `Please pick another one labelled \`good first issue\` — there are plenty. ` +
+                `If @${assignees[0]} has not pushed anything in 5 days, this issue is ` +
+                `automatically released and you can claim it then.`
+              );
+              return;
+            }
+
+            if (assignees.includes(user)) {
+              await say(`@${user} you already have this one. Go for it.`);
+              return;
+            }
+
+            // Cap how many issues one person can sit on at once.
+            const MAX_OPEN = 2;
+            const { data: mine } = await github.rest.issues.listForRepo({
+              owner, repo, state: 'open', assignee: user, per_page: 100,
+            });
+            const openIssues = mine.filter((i) => !i.pull_request);
+            if (openIssues.length >= MAX_OPEN) {
+              await say(
+                `@${user} you already have ${openIssues.length} open issues assigned ` +
+                `(${openIssues.map((i) => '#' + i.number).join(', ')}).\n\n` +
+                `Please finish or \`/unclaim\` one before taking another. This keeps ` +
+                `issues available for everyone during the event.`
+              );
+              return;
+            }
+
+            await github.rest.issues.addAssignees({
+              owner, repo, issue_number, assignees: [user],
+            });
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number, labels: ['status: claimed'],
+            });
+            await say(
+              `Assigned to @${user}. It is yours.\n\n` +
+              `**Next steps**\n` +
+              `1. Fork this repo and clone your fork\n` +
+              `2. \`git checkout -b fix/short-description\`\n` +
+              `3. Make the change, commit, push\n` +
+              `4. Open a PR with \`Closes #${issue_number}\` in the description\n\n` +
+              `If you get stuck, comment here saying what you have tried. If you change your ` +
+              `mind, comment \`/unclaim\` — no hard feelings, that is genuinely fine.`
+            );

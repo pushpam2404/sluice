@@ -1,0 +1,7 @@
+cust_id,full_name,email,status,country
+1001,Asha Menon,asha@example.com,active,IN
+1002,Ben Carter,ben@example.com,active,UK
+1003,Chen Wei,chen@example.com,churned,SG
+1004,Dana Oyelaran,dana@example.com,active,NG
+1005,Eli Rosen,eli@example.com,active,US
+1006,Farah Haddad,farah@example.com,churned,AE

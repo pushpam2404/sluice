@@ -1,0 +1,39 @@
+name: Challenge a design decision
+description: Argue that one of the documented decisions should go the other way
+labels: ["design-decision", "needs-discussion", "difficulty: advanced"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These are the most valuable issues in the project.
+
+        Read [docs/design-decisions.md](../blob/main/docs/design-decisions.md)
+        first — each entry already says what was considered and what would
+        change the answer. Start from there rather than from scratch.
+  - type: input
+    id: which
+    attributes:
+      label: Which decision?
+      placeholder: "2 — rows are a list of dictionaries, all held in memory"
+    validations: { required: true }
+  - type: textarea
+    id: case
+    attributes:
+      label: What should it be instead, and why?
+      description: The trade-off is the interesting part. What gets worse if we do this?
+    validations: { required: true }
+  - type: textarea
+    id: trigger
+    attributes:
+      label: What changed to make the current answer wrong?
+      description: |
+        The document lists what would have to be true for each decision to flip.
+        Has that happened, or is the listed trigger itself wrong?
+    validations: { required: true }
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Before you start building
+      options:
+        - label: I understand a well-argued case matters more here than a large pull request, and that "leave it as it is" is a legitimate outcome
+          required: true

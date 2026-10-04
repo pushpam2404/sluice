@@ -1,0 +1,31 @@
+# Keeps this repo's labels identical to the org standard set.
+# Edit .github/labels.yml, push to main, and the labels update themselves.
+name: Sync labels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/labels.yml"
+      - ".github/workflows/labels.yml"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    name: Apply label set
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync labels from .github/labels.yml
+        uses: crazy-max/ghaction-github-labeler@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          yaml-file: .github/labels.yml
+          # Never delete labels that are not in the file — other tools
+          # and GitHub itself sometimes add their own.
+          skip-delete: true
+          dry-run: false
